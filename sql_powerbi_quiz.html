@@ -1,0 +1,270 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+#quiz-app { padding: 1rem 0; max-width: 680px; }
+.header { margin-bottom: 1.5rem; }
+.progress-bar-wrap { background: var(--color-background-secondary); border-radius: 99px; height: 6px; margin: 0.75rem 0 0.5rem; }
+.progress-bar { background: #534AB7; height: 6px; border-radius: 99px; transition: width 0.4s; }
+.meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--color-text-secondary); }
+.topic-badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 99px; display: inline-block; margin-bottom: 8px; }
+.badge-sql { background: #EEEDFE; color: #3C3489; }
+.badge-pbi { background: #FAEEDA; color: #633806; }
+.badge-syntax { background: #E1F5EE; color: #085041; }
+.q-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.q-text { font-size: 15px; font-weight: 500; color: var(--color-text-primary); line-height: 1.6; margin-bottom: 1rem; }
+.code-block { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; font-family: var(--font-mono); font-size: 13px; color: var(--color-text-primary); margin-bottom: 1rem; white-space: pre; overflow-x: auto; border: 0.5px solid var(--color-border-tertiary); line-height: 1.7; }
+.options { display: flex; flex-direction: column; gap: 8px; }
+.opt-btn { text-align: left; background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 0.6rem 1rem; font-size: 14px; color: var(--color-text-primary); cursor: pointer; transition: background 0.15s, border-color 0.15s; line-height: 1.5; font-family: var(--font-sans); }
+.opt-btn:hover:not(:disabled) { background: var(--color-background-secondary); border-color: var(--color-border-primary); }
+.opt-btn.correct { background: #EAF3DE; border-color: #639922; color: #27500A; }
+.opt-btn.wrong { background: #FCEBEB; border-color: #A32D2D; color: #501313; }
+.opt-btn.reveal-correct { background: #EAF3DE; border-color: #639922; color: #27500A; }
+.opt-btn:disabled { cursor: default; }
+.feedback { font-size: 13px; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: var(--border-radius-md); line-height: 1.5; }
+.feedback.correct { background: #EAF3DE; color: #27500A; }
+.feedback.wrong { background: #FCEBEB; color: #501313; }
+.nav-row { display: flex; gap: 8px; margin-top: 1rem; }
+.nav-btn { padding: 0.5rem 1.25rem; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-size: 14px; cursor: pointer; font-family: var(--font-sans); transition: background 0.15s; }
+.nav-btn:hover { background: var(--color-background-secondary); }
+.nav-btn.primary { background: #534AB7; color: #fff; border-color: #534AB7; }
+.nav-btn.primary:hover { background: #3C3489; }
+.score-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; }
+.score-big { font-size: 48px; font-weight: 500; color: #534AB7; }
+.score-label { font-size: 14px; color: var(--color-text-secondary); margin-top: 4px; }
+.breakdown { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 1.5rem 0; }
+.bk-cell { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem; }
+.bk-num { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.bk-lbl { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.filter-btn { font-size: 12px; padding: 4px 12px; border-radius: 99px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; font-family: var(--font-sans); transition: background 0.15s; }
+.filter-btn.active { background: #534AB7; color: #fff; border-color: #534AB7; }
+</style>
+
+<div id="quiz-app">
+  <h2 class="sr-only">SQL and Power BI quiz with 60 multiple choice questions</h2>
+  <div id="quiz-root"></div>
+</div>
+
+<script>
+const ALL_QUESTIONS = [
+  {topic:"SQL",sub:"Joins",q:"What does a LEFT JOIN return?",opts:["Only matching rows from both tables","All rows from the left table, and matched rows from the right","All rows from both tables","Only rows from the right table"],ans:1,exp:"LEFT JOIN returns all rows from the left table. Where there's no match in the right table, NULLs are returned for right-table columns."},
+  {topic:"SQL",sub:"Joins",q:"Which JOIN type returns all rows from both tables, filling NULLs where there is no match?",opts:["LEFT JOIN","RIGHT JOIN","INNER JOIN","FULL OUTER JOIN"],ans:3,exp:"FULL OUTER JOIN returns all rows from both tables, with NULLs where there's no match on either side."},
+  {topic:"SQL",sub:"Joins",q:"A RIGHT JOIN between TableA and TableB returns:",opts:["All rows from TableA","Only rows with matches in both tables","All rows from TableB, with NULLs for unmatched TableA columns","Only unmatched rows from TableB"],ans:2,exp:"RIGHT JOIN returns all rows from the right table (TableB) and matched rows from the left, with NULLs where TableA has no match."},
+  {topic:"SQL",sub:"Joins",q:"INNER JOIN returns rows where:",opts:["All rows from both tables","There is a match in BOTH tables","There is a match in at least one table","No match exists"],ans:1,exp:"INNER JOIN only returns rows that have matching values in both tables on the join condition."},
+  {topic:"SQL",sub:"Joins",q:"Which join would you use to find records in TableA that have NO match in TableB?",opts:["INNER JOIN","RIGHT JOIN","LEFT JOIN with WHERE TableB.id IS NULL","FULL JOIN"],ans:2,exp:"A LEFT JOIN combined with WHERE TableB.id IS NULL filters to only the unmatched rows from TableA — a classic anti-join pattern."},
+  {topic:"SQL",sub:"Joins",q:"In a FULL OUTER JOIN, rows with no match on either side will have:",opts:["Default values","NULL in the unmatched columns","0 in numeric columns","Been removed from the result"],ans:1,exp:"FULL OUTER JOIN pads unmatched columns with NULLs on whichever side has no corresponding row."},
+  {topic:"SQL",sub:"Joins",q:"Which of the following correctly uses a LEFT JOIN?",opts:["SELECT * FROM A RIGHT JOIN B ON A.id = B.id","SELECT * FROM A LEFT JOIN B ON A.id = B.id","SELECT * FROM A INNER JOIN B ON A.id = B.id","SELECT * FROM A, B WHERE A.id = B.id"],ans:1,exp:"The second option is the correct LEFT JOIN syntax: FROM left_table LEFT JOIN right_table ON condition."},
+  {topic:"SQL",sub:"Joins",q:"What is the result of a CROSS JOIN?",opts:["Only matching rows","Cartesian product of both tables","Rows unique to each table","Rows with NULL matches only"],ans:1,exp:"A CROSS JOIN produces a Cartesian product — every row in TableA is combined with every row in TableB."},
+
+  {topic:"SQL",sub:"Window Functions",q:"Which window function assigns a unique sequential integer to rows, restarting for each partition?",opts:["RANK()","DENSE_RANK()","ROW_NUMBER()","NTILE()"],ans:2,exp:"ROW_NUMBER() assigns a unique integer to every row within its partition, with no ties or gaps."},
+  {topic:"SQL",sub:"Window Functions",q:"What is the difference between RANK() and DENSE_RANK()?",opts:["They are identical","RANK() skips numbers after ties; DENSE_RANK() does not","DENSE_RANK() skips numbers after ties; RANK() does not","RANK() only works with ORDER BY"],ans:1,exp:"RANK() leaves gaps after ties (e.g., 1,1,3), while DENSE_RANK() does not (e.g., 1,1,2)."},
+  {topic:"SQL",sub:"Window Functions",q:"The LAG() function is used to:",opts:["Return the next row's value","Return the current row's rank","Return a previous row's value","Count rows in a partition"],ans:2,exp:"LAG() accesses a value from a previous row within the result set, useful for comparing a row to its predecessor."},
+  {topic:"SQL",sub:"Window Functions",q:"The LEAD() function is used to:",opts:["Return the next row's value","Return the previous row's value","Assign ranks to rows","Compute running totals"],ans:0,exp:"LEAD() looks ahead to a subsequent row's value — the opposite of LAG()."},
+  {topic:"SQL",sub:"Window Functions",q:"What clause is always required when using window functions?",opts:["GROUP BY","HAVING","OVER()","PARTITION BY"],ans:2,exp:"All window functions require the OVER() clause to define the window frame. PARTITION BY and ORDER BY inside it are optional depending on the function."},
+  {topic:"SQL",sub:"Window Functions",q:"ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) — what does PARTITION BY dept do?",opts:["Filters only the dept column","Groups rows so numbering restarts for each department","Sorts the final output by dept","Removes duplicate dept values"],ans:1,exp:"PARTITION BY resets the window function's counter/calculation for each unique value in the specified column — here, each department gets its own numbering sequence."},
+  {topic:"SQL",sub:"Window Functions",q:"Which function would you use to get the salary of the employee hired just BEFORE the current employee?",opts:["LEAD(salary,1)","LAG(salary,1)","ROW_NUMBER()","RANK()"],ans:1,exp:"LAG(salary,1) fetches the salary value from 1 row behind the current row in the ordered window."},
+  {topic:"SQL",sub:"Window Functions",q:"Two employees have the same salary. RANK() gives them both rank 3. What rank does the next employee receive?",opts:["4","3","5","2"],ans:2,exp:"RANK() skips the next number after ties. Since two employees share rank 3, the next distinct employee gets rank 5."},
+
+  {topic:"SQL",sub:"Stored Procedures",q:"What is a stored procedure in SQL?",opts:["A temporary table","A precompiled set of SQL statements stored in the database","A view with parameters","An index on a column"],ans:1,exp:"A stored procedure is a named, precompiled collection of SQL statements stored in the database that can be executed repeatedly."},
+  {topic:"SQL",sub:"Stored Procedures",q:"Which keyword is used to create a stored procedure in SQL Server?",opts:["FUNCTION","TRIGGER","PROCEDURE","MACRO"],ans:2,exp:"CREATE PROCEDURE (or CREATE PROC) is the SQL Server syntax for creating stored procedures."},
+  {topic:"SQL",sub:"Stored Procedures",q:"How do you execute a stored procedure named GetEmployees in SQL Server?",opts:["RUN GetEmployees","CALL GetEmployees","EXEC GetEmployees","START GetEmployees"],ans:2,exp:"In SQL Server, stored procedures are executed with EXEC or EXECUTE followed by the procedure name."},
+  {topic:"SQL",sub:"Stored Procedures",q:"Which of the following is a benefit of stored procedures?",opts:["They run slower than inline SQL","They cannot accept parameters","They improve performance through precompilation and reduce SQL injection risk","They cannot be reused"],ans:2,exp:"Stored procedures are precompiled, can be parameterised, improve performance, and reduce SQL injection risk by separating logic from user input."},
+  {topic:"SQL",sub:"Stored Procedures",q:"In SQL Server, which keyword begins the body of a stored procedure?",opts:["START","DO","AS BEGIN","DECLARE"],ans:2,exp:"After CREATE PROCEDURE ... AS BEGIN, you write the body of the procedure, closed with END."},
+  {topic:"SQL",sub:"Stored Procedures",q:"To pass a parameter to a stored procedure in SQL Server, you prefix the parameter name with:",opts:["#","@","$","&"],ans:1,exp:"In SQL Server, all parameters and variables are prefixed with @, e.g., @EmployeeID INT."},
+
+  {topic:"SQL",sub:"Views",q:"What is a SQL View?",opts:["A physical copy of a table","A virtual table based on a SELECT query","A stored procedure without parameters","A type of index"],ans:1,exp:"A view is a virtual table whose contents are defined by a query. It doesn't store data itself (unless materialised)."},
+  {topic:"SQL",sub:"Views",q:"Which statement creates a view?",opts:["MAKE VIEW v AS SELECT ...","CREATE VIEW v AS SELECT ...","BUILD VIEW v FROM ...","DEFINE VIEW v SELECT ..."],ans:1,exp:"The correct syntax is CREATE VIEW view_name AS SELECT ... ."},
+  {topic:"SQL",sub:"Views",q:"A view is automatically updated when:",opts:["You manually refresh it","The underlying table data changes","You recreate the view","Never — it stores a snapshot"],ans:1,exp:"A standard view re-runs its query each time it's accessed, so it always reflects the current state of the underlying tables."},
+  {topic:"SQL",sub:"Views",q:"Which of the following is TRUE about views?",opts:["Views can never be used in joins","Views always store data physically","Views can simplify complex queries for end users","Views cannot reference other views"],ans:2,exp:"Views encapsulate complex queries, presenting a simpler interface to users — they can absolutely be used in joins and can reference other views."},
+  {topic:"SQL",sub:"Views",q:"To remove a view from the database, you use:",opts:["REMOVE VIEW","DELETE VIEW","DROP VIEW","TRUNCATE VIEW"],ans:2,exp:"DROP VIEW view_name permanently removes the view definition from the database."},
+  {topic:"SQL",sub:"Views",q:"Can a view be based on multiple tables?",opts:["No, only one table","Yes, using JOIN in the SELECT","Only if it uses UNION","Only if it's a materialised view"],ans:1,exp:"A view's defining SELECT can join multiple tables, aggregate data, filter rows, and more — it's just a stored query."},
+
+  {topic:"SQL",sub:"Case Statement",q:"What does the CASE statement do in SQL?",opts:["Creates a new table","Performs conditional logic similar to IF-ELSE","Iterates over rows","Defines a stored procedure"],ans:1,exp:"CASE evaluates conditions and returns a value when the first condition is met — it's SQL's way of doing conditional logic inline."},
+  {topic:"SQL",sub:"Case Statement",q:"Which keyword ends a CASE statement in SQL?",opts:["STOP","FINISH","END","CLOSE"],ans:2,exp:"Every CASE expression must be closed with END."},
+  {topic:"SQL",sub:"Case Statement",q:"What does ELSE in a CASE statement do?",opts:["Skips all conditions","Provides a default value if no WHEN condition matches","Ends the CASE statement","Raises an error"],ans:1,exp:"ELSE gives a fallback value if none of the WHEN conditions evaluate to true."},
+  {topic:"SQL",sub:"Case Statement",q:"CASE WHEN salary > 80000 THEN 'High' WHEN salary > 50000 THEN 'Medium' ELSE 'Low' END — a row with salary = 60000 returns:",opts:["High","Medium","Low","NULL"],ans:1,exp:"60000 is not > 80000, but it is > 50000, so the second WHEN fires and returns 'Medium'."},
+  {topic:"SQL",sub:"Case Statement",q:"A CASE statement with no ELSE clause and no matching WHEN returns:",opts:["An error","0","Empty string","NULL"],ans:3,exp:"If no WHEN condition matches and there is no ELSE, the CASE expression returns NULL."},
+  {topic:"SQL",sub:"Case Statement",q:"Which of the following is a valid use of CASE in SQL?",opts:["CASE WHEN col = 1 END","CASE col WHEN 1 THEN 'One' ELSE 'Other' END","CASE WHEN col = 1","CASE 1 WHEN col THEN 'Yes' END"],ans:1,exp:"The simple CASE form: CASE expression WHEN value THEN result ... ELSE result END is valid SQL."},
+
+  {topic:"SQL",sub:"Cast Operations",q:"What does CAST() do in SQL?",opts:["Renames a column","Converts a value from one data type to another","Creates a view","Joins two tables"],ans:1,exp:"CAST(expression AS data_type) converts a value to a specified data type, e.g., CAST('123' AS INT)."},
+  {topic:"SQL",sub:"Cast Operations",q:"Which is the correct CAST syntax?",opts:["CAST(column, INT)","CAST column AS INT","CAST(column AS INT)","CONVERT(column, INT)"],ans:2,exp:"CAST uses the format CAST(expression AS target_type) — note the AS keyword inside the parentheses."},
+  {topic:"SQL",sub:"Cast Operations",q:"What is the difference between CAST and CONVERT in SQL Server?",opts:["They are completely identical","CONVERT allows a style parameter for date formatting; CAST does not","CAST is faster than CONVERT always","CONVERT is ANSI standard; CAST is not"],ans:1,exp:"CONVERT is SQL Server-specific and accepts an optional style parameter for date/time formatting. CAST is ANSI SQL standard."},
+  {topic:"SQL",sub:"Cast Operations",q:"CAST('2024-01-15' AS DATE) converts:",opts:["A number to a date","A string to a DATE data type","A date to a string","A float to an integer"],ans:1,exp:"This casts the string literal '2024-01-15' into a proper DATE data type that the database can manipulate as a date."},
+  {topic:"SQL",sub:"Cast Operations",q:"What happens if CAST fails to convert a value?",opts:["Returns NULL","Returns 0","Raises a conversion error","Skips the row"],ans:2,exp:"A failed CAST raises a data type conversion error. Use TRY_CAST() in SQL Server if you want NULL returned on failure instead."},
+
+  {topic:"PowerBI",sub:"DAX",q:"What does the CALCULATE function do in DAX?",opts:["Performs string concatenation","Evaluates an expression in a modified filter context","Creates a new table","Counts rows in a table"],ans:1,exp:"CALCULATE is one of DAX's most powerful functions — it evaluates any DAX expression after applying filter modifications to the current context."},
+  {topic:"PowerBI",sub:"DAX",q:"In DAX, FILTER() returns:",opts:["A single value","A modified filter context","A table that is a subset of another table","The row count of a table"],ans:2,exp:"FILTER() iterates over a table and returns a new table containing only the rows that meet the specified condition."},
+  {topic:"PowerBI",sub:"DAX",q:"What does SUM() do in DAX?",opts:["Averages a column","Counts distinct values","Adds all values in a numeric column","Returns the maximum value"],ans:2,exp:"SUM(column) adds up all the numeric values in the specified column, respecting the current filter context."},
+  {topic:"PowerBI",sub:"DAX",q:"What is the difference between SUM() and SUMX() in DAX?",opts:["They are identical","SUM works on a column; SUMX iterates a table and evaluates an expression per row","SUMX only works on measures","SUM can only be used with integers"],ans:1,exp:"SUM aggregates a single column directly. SUMX is an iterator — it evaluates a row-by-row expression and then sums the results."},
+  {topic:"PowerBI",sub:"DAX",q:"AVG() in DAX calculates:",opts:["The maximum value","The sum of all values","The arithmetic mean of a numeric column","The median value"],ans:2,exp:"AVG(column) computes the arithmetic mean of all non-blank numeric values in the specified column."},
+  {topic:"PowerBI",sub:"DAX",q:"AVERAGEX() differs from AVG() because:",opts:["AVERAGEX rounds results","AVERAGEX works on text columns","AVERAGEX iterates a table and averages a row-level expression","AVERAGEX ignores filter context"],ans:2,exp:"AVERAGEX(table, expression) evaluates the expression for each row in the table, then averages those row-level results."},
+  {topic:"PowerBI",sub:"DAX",q:"CALCULATE(SUM(Sales[Amount]), Sales[Region] = 'North') returns:",opts:["Total sales for all regions","Total sales only where Region is North","Count of rows where Region is North","Average sales for the North region"],ans:1,exp:"CALCULATE evaluates SUM(Sales[Amount]) after applying the filter Sales[Region] = 'North', restricting the calculation to North region rows only."},
+  {topic:"PowerBI",sub:"DAX",q:"Which DAX function removes all existing filters from a column?",opts:["REMOVEFILTERS()","CLEAR()","ALL()","BLANK()"],ans:2,exp:"ALL(table or column) removes filters from the specified table or column, allowing calculations to ignore slicers or other active filters."},
+  {topic:"PowerBI",sub:"DAX",q:"What does COUNTROWS() do in DAX?",opts:["Counts distinct values in a column","Counts the number of rows in a table","Counts non-blank values in a column","Sums numeric values"],ans:1,exp:"COUNTROWS(table) counts the total number of rows in a table or the result of a table expression."},
+  {topic:"PowerBI",sub:"DAX",q:"Which function would you use to count only non-blank values in a column?",opts:["COUNT()","COUNTROWS()","DISTINCTCOUNT()","COUNTA()"],ans:0,exp:"COUNT(column) counts the number of non-blank values in a column — similar to COUNT(*) in SQL but column-specific."},
+  {topic:"PowerBI",sub:"DAX",q:"The FILTER function in CALCULATE is used to:",opts:["Sort a table","Add or modify filter conditions on a table","Create a relationship between tables","Aggregate values"],ans:1,exp:"FILTER() used inside CALCULATE adds a table-level filter condition, allowing precise control over which rows are included in the calculation."},
+  {topic:"PowerBI",sub:"DAX",q:"What is a measure in Power BI DAX?",opts:["A physical column in a table","A calculated value that is evaluated in the context of a visual or report","A relationship between two tables","A type of visualisation"],ans:1,exp:"A DAX measure is a dynamic calculation defined using DAX formulas. It is evaluated in real-time based on the current filter/visual context."},
+
+  {topic:"SQL",sub:"Joins",syntax:true,q:"What is the output type of the following JOIN?\n\nSELECT A.name, B.salary\nFROM Employees A\nLEFT JOIN Salaries B ON A.emp_id = B.emp_id;",opts:["Only employees with a salary record","All employees; NULL salary for those without a match","All salary records; NULL name for unmatched","An error — alias not allowed"],ans:1,exp:"LEFT JOIN returns all rows from Employees (left table). For employees with no matching row in Salaries, the salary columns will be NULL."},
+  {topic:"SQL",sub:"Window Functions",syntax:true,q:"What does this query return?\n\nSELECT name, salary,\n  ROW_NUMBER() OVER\n  (ORDER BY salary DESC) AS rn\nFROM Employees;",opts:["Employees sorted alphabetically","Each employee with a unique rank by descending salary","Duplicate ranks for equal salaries","An error — ROW_NUMBER needs PARTITION BY"],ans:1,exp:"ROW_NUMBER() OVER (ORDER BY salary DESC) assigns a unique sequential number starting at 1 for the highest salary. PARTITION BY is optional."},
+  {topic:"SQL",sub:"Stored Procedures",syntax:true,q:"What is wrong with this stored procedure?\n\nCREATE PROCEDURE GetEmp\nAS\n  SELECT * FROM Employees\nGO",opts:["Missing BEGIN...END block","GO is not valid SQL","Missing RETURN statement","Nothing is wrong — this is valid"],ans:3,exp:"This is perfectly valid SQL Server syntax. BEGIN...END is optional for single-statement procedures. GO is a batch separator, not SQL, but it's accepted in SQL Server Management Studio."},
+  {topic:"SQL",sub:"Views",syntax:true,q:"What does this statement do?\n\nCREATE VIEW SeniorStaff AS\nSELECT * FROM Employees\nWHERE years_of_service > 10;",opts:["Creates a new physical table","Creates a virtual table showing only employees with > 10 years of service","Permanently deletes employees with ≤ 10 years","Updates the Employees table"],ans:1,exp:"CREATE VIEW defines a virtual table (SeniorStaff) that, when queried, runs the SELECT and returns employees with more than 10 years of service from the underlying table."},
+  {topic:"SQL",sub:"Case Statement",syntax:true,q:"What does this query return for a row where score = 55?\n\nSELECT\n  CASE\n    WHEN score >= 90 THEN 'A'\n    WHEN score >= 75 THEN 'B'\n    WHEN score >= 60 THEN 'C'\n    ELSE 'F'\n  END AS grade\nFROM Results;",opts:["A","B","C","F"],ans:3,exp:"55 is below 60, so none of the WHEN conditions match. The ELSE clause fires and returns 'F'."},
+  {topic:"SQL",sub:"Cast Operations",syntax:true,q:"What does this expression return?\n\nSELECT CAST(3.99 AS INT);",opts:["4","3","Error — cannot cast float to int","3.99"],ans:1,exp:"CAST truncates (does not round) the decimal — 3.99 cast to INT returns 3, not 4."},
+  {topic:"PowerBI",sub:"DAX",syntax:true,q:"What does this DAX measure calculate?\n\nTotal North Sales =\nCALCULATE(\n  SUM(Sales[Amount]),\n  Sales[Region] = \"North\"\n)",opts:["Sum of all sales","Sum of sales only in the North region","Count of North region rows","Average sales in the North region"],ans:1,exp:"CALCULATE modifies the filter context so that SUM(Sales[Amount]) only aggregates rows where Region equals 'North'."},
+  {topic:"PowerBI",sub:"DAX",syntax:true,q:"What does this DAX return?\n\nAvgRevenue =\nAVERAGEX(\n  Products,\n  Products[Price] * Products[Quantity]\n)",opts:["Sum of Price × Quantity for all products","The average of (Price × Quantity) calculated per product row","Count of products","Maximum revenue product"],ans:1,exp:"AVERAGEX iterates the Products table, computes Price × Quantity for each row, then averages those row-level results."},
+  {topic:"SQL",sub:"Window Functions",syntax:true,q:"What does this return for a row where the PREVIOUS row's salary was 50000?\n\nSELECT name, salary,\n  LAG(salary, 1) OVER\n  (ORDER BY hire_date) AS prev_salary\nFROM Employees;",opts:["The next employee's salary","50000","NULL — LAG doesn't work without PARTITION BY","An error"],ans:1,exp:"LAG(salary, 1) OVER (ORDER BY hire_date) fetches the salary of the row immediately preceding the current one in hire_date order — so it returns 50000."},
+  {topic:"PowerBI",sub:"DAX",syntax:true,q:"What is the purpose of ALL() in this DAX measure?\n\nPct of Total =\nDIVIDE(\n  SUM(Sales[Amount]),\n  CALCULATE(SUM(Sales[Amount]), ALL(Sales))\n)",opts:["Filters to a single category","Removes all filters from Sales so the denominator is the grand total","Counts all rows in Sales","Returns NULL if no filter exists"],ans:1,exp:"ALL(Sales) strips any active filters from the Sales table, so the denominator always reflects the grand total, making the numerator a percentage of total rather than filtered total."},
+];
+
+const TOPICS = ['All','SQL','PowerBI'];
+const SUBTOPICS = ['All','Joins','Window Functions','Stored Procedures','Views','Case Statement','Cast Operations','DAX'];
+
+let state = {
+  screen: 'quiz',
+  filter: 'All',
+  filteredQs: [],
+  current: 0,
+  answered: false,
+  selected: null,
+  results: [],
+};
+
+function shuffle(arr) {
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function initQuiz(filter) {
+  let qs = filter === 'All' ? ALL_QUESTIONS : ALL_QUESTIONS.filter(q => q.topic === filter || q.sub === filter);
+  state.filteredQs = shuffle(qs);
+  state.current = 0;
+  state.answered = false;
+  state.selected = null;
+  state.results = [];
+  state.screen = 'quiz';
+  render();
+}
+
+function render() {
+  const root = document.getElementById('quiz-root');
+  if(state.screen === 'result') { root.innerHTML = renderResult(); attachResultEvents(); return; }
+  const q = state.filteredQs[state.current];
+  const total = state.filteredQs.length;
+  const pct = Math.round((state.current / total) * 100);
+  const isSyntax = q.syntax;
+  const badge = q.topic === 'SQL' ? 'badge-sql' : 'badge-pbi';
+  let html = `
+    <div class="header">
+      <div class="filter-row">
+        ${TOPICS.map(t=>`<button class="filter-btn${state.filter===t?' active':''}" onclick="setFilter('${t}')">${t==='All'?'All topics':t}</button>`).join('')}
+        <button class="filter-btn${state.filter==='DAX'?' active':''}" onclick="setFilter('DAX')">DAX</button>
+        <button class="filter-btn${state.filter==='syntax'?' active':''}" onclick="setFilter('syntax')">Syntax only</button>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+      <div class="meta"><span>Question ${state.current+1} of ${total}</span><span>${state.results.filter(r=>r).length} correct</span></div>
+    </div>
+    <div class="q-card">
+      <span class="topic-badge ${badge}">${q.topic} · ${q.sub}${isSyntax?' · Syntax':''}</span>
+      ${isSyntax?`<div class="code-block">${escHtml(q.q)}</div>`:`<div class="q-text">${escHtml(q.q)}</div>`}
+      <div class="options">
+        ${q.opts.map((o,i)=>{
+          let cls='opt-btn';
+          if(state.answered){
+            if(i===q.ans) cls+=' correct';
+            else if(i===state.selected) cls+=' wrong';
+          }
+          return `<button class="opt-btn${state.answered?(i===q.ans?' correct':(i===state.selected?' wrong':'')):''}"\n            ${state.answered?'disabled':''} onclick="answer(${i})">${String.fromCharCode(65+i)}. ${escHtml(o)}</button>`;
+        }).join('')}
+      </div>
+      ${state.answered?`<div class="feedback ${state.selected===q.ans?'correct':'wrong'}">${state.selected===q.ans?'✓ Correct — ':'✗ Incorrect — '}${escHtml(q.exp)}</div>`:''}
+    </div>
+    <div class="nav-row">
+      ${state.current>0?`<button class="nav-btn" onclick="go(-1)">← Back</button>`:''}
+      ${state.answered && state.current<state.filteredQs.length-1?`<button class="nav-btn primary" onclick="go(1)">Next →</button>`:''}
+      ${state.answered && state.current===state.filteredQs.length-1?`<button class="nav-btn primary" onclick="finish()">See results</button>`:''}
+    </div>
+  `;
+  root.innerHTML = html;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function answer(idx) {
+  if(state.answered) return;
+  state.selected = idx;
+  state.answered = true;
+  state.results[state.current] = (idx === state.filteredQs[state.current].ans);
+  render();
+}
+
+function go(dir) {
+  state.current += dir;
+  state.answered = !!state.results[state.current] !== undefined && state.results[state.current] !== undefined && state.current < state.results.length;
+  state.selected = null;
+  render();
+}
+
+function finish() {
+  state.screen = 'result';
+  render();
+}
+
+function setFilter(f) {
+  state.filter = f;
+  let qs;
+  if(f==='All') qs = ALL_QUESTIONS;
+  else if(f==='syntax') qs = ALL_QUESTIONS.filter(q=>q.syntax);
+  else if(f==='SQL'||f==='PowerBI') qs = ALL_QUESTIONS.filter(q=>q.topic===f);
+  else qs = ALL_QUESTIONS.filter(q=>q.sub===f);
+  state.filteredQs = shuffle(qs);
+  state.current = 0;
+  state.answered = false;
+  state.selected = null;
+  state.results = [];
+  state.screen = 'quiz';
+  render();
+}
+
+function renderResult() {
+  const total = state.filteredQs.length;
+  const correct = state.results.filter(r=>r).length;
+  const pct = Math.round((correct/total)*100);
+  const sqlC = state.filteredQs.filter((q,i)=>q.topic==='SQL'&&state.results[i]).length;
+  const sqlT = state.filteredQs.filter(q=>q.topic==='SQL').length;
+  const pbiC = state.filteredQs.filter((q,i)=>q.topic==='PowerBI'&&state.results[i]).length;
+  const pbiT = state.filteredQs.filter(q=>q.topic==='PowerBI').length;
+  const msg = pct>=80?'Excellent work!':pct>=60?'Good effort!':'Keep practising!';
+  return `
+    <div class="score-card">
+      <div class="score-big">${pct}%</div>
+      <div class="score-label">${correct} / ${total} correct · ${msg}</div>
+      <div class="breakdown">
+        <div class="bk-cell"><div class="bk-num">${correct}</div><div class="bk-lbl">Correct</div></div>
+        ${sqlT>0?`<div class="bk-cell"><div class="bk-num">${sqlC}/${sqlT}</div><div class="bk-lbl">SQL</div></div>`:''}
+        ${pbiT>0?`<div class="bk-cell"><div class="bk-num">${pbiC}/${pbiT}</div><div class="bk-lbl">Power BI</div></div>`:''}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button class="nav-btn primary" id="retry-btn">Retry same questions</button>
+        <button class="nav-btn" id="newall-btn">New shuffle — all topics</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachResultEvents() {
+  document.getElementById('retry-btn')?.addEventListener('click',()=>{
+    state.current=0;state.answered=false;state.selected=null;state.results=[];state.screen='quiz';render();
+  });
+  document.getElementById('newall-btn')?.addEventListener('click',()=>setFilter('All'));
+}
+
+window.answer = answer;
+window.go = go;
+window.finish = finish;
+window.setFilter = setFilter;
+
+initQuiz('All');
+</script>
